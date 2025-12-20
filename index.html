@@ -1,127 +1,220 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>Amtscup Jungschützen – Resultat</title>
+<title>Amtscup Jungschützen – Cup-Duell</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background: #eef2f7;
-  padding: 20px;
+*{box-sizing:border-box}
+body{font-family:system-ui,sans-serif;background:#eef2f7;margin:0;color:#111827}
+.container{max-width:1100px;margin:auto;padding:1rem}
+h1{color:#1e3a8a}
+h2{color:#1d4ed8;margin:0 0 .5rem}
+.card{background:#fff;border-radius:14px;padding:1rem 1.25rem;box-shadow:0 4px 10px rgba(15,23,42,.08);margin-bottom:1rem}
+.row{display:flex;flex-wrap:wrap;gap:.75rem}
+.field{flex:1;min-width:180px}
+label{font-size:.8rem;font-weight:600}
+input,select{width:100%;padding:.5rem;border-radius:8px;border:1px solid #cbd5f5}
+
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th,td{border:1px solid #e5e7eb;padding:.4rem;text-align:center}
+th{background:#dbeafe}
+.sum{background:#f3f4f6;font-weight:700}
+
+button{
+  border:none;
+  border-radius:999px;
+  padding:.8rem 1.2rem;
+  font-size:1rem;
+  cursor:pointer;
+  background:#2563eb;
+  color:white;
+  width:100%;
 }
-form {
-  max-width: 600px;
-  background: #fff;
-  padding: 20px;
-  border-radius: 10px;
-  margin: auto;
-}
-label {
-  display: block;
-  margin-top: 12px;
-  font-weight: bold;
-}
-input {
-  width: 100%;
-  padding: 8px;
-}
-button {
-  margin-top: 20px;
-  padding: 12px;
-  width: 100%;
-  font-size: 16px;
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 8px;
+
+@media(max-width:768px){
+  .row{flex-direction:column}
+  table{display:block;overflow-x:auto;white-space:nowrap}
 }
 </style>
 </head>
 
 <body>
+<div class="container">
 
-<h2 style="text-align:center">Amtscup Jungschützen – Resultat</h2>
+<h1>Amtscup Jungschützen – Cup-Duell</h1>
 
-<form id="resultForm">
+<!-- Gruppenchef -->
+<div class="card">
+<h2>1. Gruppenchef</h2>
+<div class="row">
+  <div class="field">
+    <label>Name</label>
+    <input id="chef">
+  </div>
+  <div class="field">
+    <label>E-Mail</label>
+    <input id="email" type="email">
+  </div>
+</div>
+</div>
 
-<label>Gruppenchef Name</label>
-<input id="chef">
+<!-- Gruppenwahl -->
+<div class="card">
+<h2>2. Gruppenwahl</h2>
+<div class="row">
+  <div class="field">
+    <label>Gruppe 1 *</label>
+    <select id="g1" onchange="updateTitles()"></select>
+  </div>
+  <div class="field">
+    <label>Gruppe 2 (optional)</label>
+    <select id="g2" onchange="updateTitles()"></select>
+  </div>
+  <div class="field">
+    <label>Gruppe 3 (optional)</label>
+    <select id="g3" onchange="updateTitles()"></select>
+  </div>
+</div>
+</div>
 
-<label>Gruppenchef E-Mail</label>
-<input id="email" type="email">
+<div id="groups"></div>
 
-<label>Gruppenname</label>
-<input id="gruppe">
+<div class="card">
+<button onclick="sendResult()">📧 Resultat senden</button>
+</div>
 
-<label>Schützen Name</label>
-<input id="name">
-
-<label>Jahrgang</label>
-<input id="jahrgang" type="number">
-
-<label>Resultat</label>
-<input id="resultat" type="number">
-
-<label>Summe Gruppe</label>
-<input id="summe" type="number">
-
-<button type="submit">📧 Resultat senden</button>
-
-</form>
+</div>
 
 <script>
+/* ================= KONFIG ================= */
 const SCRIPT_URL =
 "https://script.google.com/macros/s/AKfycbzTSku5sCe_J34LU49BHtuJK1gTux6ldG_LndStte6DPABoQ-38Nc_6hvh9LeKbnSrVmQ/exec";
 
-document.getElementById("resultForm").addEventListener("submit", function(e) {
-  e.preventDefault();
+/* ================= GRUPPEN LADEN ================= */
+async function loadGroups(){
+  const r = await fetch("gruppen.txt?ts="+Date.now(),{cache:"no-store"});
+  const g = r.ok ? (await r.text()).split(/\r?\n/).filter(x=>x.trim()) : [];
+  ["g1","g2","g3"].forEach(id=>{
+    const s=document.getElementById(id);
+    s.innerHTML="<option value=''>Bitte wählen …</option>";
+    g.forEach(x=>{
+      const o=document.createElement("option");
+      o.value=o.textContent=x.trim();
+      s.appendChild(o);
+    });
+  });
+}
 
-  const entry = {
-    chef: document.getElementById("chef").value,
-    email: document.getElementById("email").value,
-    gruppe: document.getElementById("gruppe").value,
-    name: document.getElementById("name").value,
-    jahrgang: document.getElementById("jahrgang").value,
-    resultat: document.getElementById("resultat").value,
-    summe: document.getElementById("summe").value
-  };
+/* ================= TABELLEN ================= */
+function createGroup(n){
+  const c=document.createElement("div");
+  c.className="card";
+  c.id="group"+n;
+  c.innerHTML=`
+    <h2 id="title${n}">Schützen – Gruppe ${n}</h2>
+    <table>
+      <thead>
+        <tr><th>#</th><th>Name</th><th>Jahrgang</th><th>Resultat</th></tr>
+      </thead>
+      <tbody></tbody>
+      <tfoot>
+        <tr><th colspan="3">Summe Gruppe ${n}</th>
+        <th id="sum${n}" class="sum">0</th></tr>
+      </tfoot>
+    </table>`;
+  const tb=c.querySelector("tbody");
+  for(let i=1;i<=4;i++){
+    tb.innerHTML+=`
+      <tr>
+        <td>${i}</td>
+        <td><input></td>
+        <td><input type="number"></td>
+        <td><input type="number" class="r" oninput="calc(${n})"></td>
+      </tr>`;
+  }
+  document.getElementById("groups").appendChild(c);
+}
 
-  /* ===== MAIL ===== */
-  const mailText =
-`AMTSCUP JUNGSCHÜTZEN – RESULTAT
+function calc(n){
+  let s=0;
+  document.querySelectorAll(`#group${n} .r`).forEach(i=>s+=+i.value||0);
+  document.getElementById("sum"+n).textContent=s;
+}
 
-Gruppenchef:
-${entry.chef}
-${entry.email}
+function updateTitles(){
+  [1,2,3].forEach(n=>{
+    const v=document.getElementById("g"+n).value;
+    document.getElementById("title"+n).textContent=
+      v ? `Schützen – Gruppe ${n}: ${v}` : `Schützen – Gruppe ${n}`;
+  });
+}
 
-Gruppe: ${entry.gruppe}
+/* ================= SENDEN ================= */
+function sendResult(){
+  if(!g1.value){
+    alert("Mindestens Gruppe 1 auswählen");
+    return;
+  }
 
-Schütze:
-${entry.name}
-${entry.jahrgang}
-Resultat: ${entry.resultat}
-Summe Gruppe: ${entry.summe}`;
+  let mail =
+"AMTSCUP JUNGSCHÜTZEN – RESULTAT\n\n"+
+"GRUPPENCHEF\n"+
+`${chef.value};${email.value}\n\n`;
 
-  location.href =
-    "mailto:thomannpeter@bluewin.ch" +
-    "?subject=" + encodeURIComponent("Amtscup Jungschützen – Resultat") +
-    "&body=" + encodeURIComponent(mailText);
+  const entries=[];
 
-  /* ===== GOOGLE TABELLE ===== */
-  fetch(SCRIPT_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: "payload=" + encodeURIComponent(JSON.stringify({
-      entries: [entry]
-    }))
+  [1,2,3].forEach(n=>{
+    const gruppe=document.getElementById("g"+n).value;
+    if(!gruppe) return;
+
+    const sum=document.getElementById("sum"+n).textContent;
+    mail+=`GRUPPE ${n};${gruppe}\nName;Jahrgang;Resultat\n`;
+
+    document.querySelectorAll(`#group${n} tbody tr`).forEach(tr=>{
+      const i=tr.querySelectorAll("input");
+      const name=i[0].value.trim();
+      const jahr=i[1].value.trim();
+      const res=i[2].value.trim();
+
+      if(!name && !res) return;
+
+      mail+=`${name};${jahr};${res}\n`;
+
+      entries.push({
+        chef: chef.value,
+        email: email.value,
+        gruppe: gruppe,
+        name: name,
+        jahrgang: jahr,
+        resultat: res,
+        summe: sum
+      });
+    });
+
+    mail+=`SUMME;;${sum}\n\n`;
   });
 
-  alert("Resultat wurde gesendet und gespeichert ✅");
-});
+  /* MAIL */
+  location.href =
+    "mailto:thomannpeter@bluewin.ch"+
+    "?subject="+encodeURIComponent("Amtscup Jungschützen – Resultat")+
+    "&body="+encodeURIComponent(mail);
+
+  /* GOOGLE TABELLE */
+  fetch(SCRIPT_URL,{
+    method:"POST",
+    headers:{"Content-Type":"application/x-www-form-urlencoded"},
+    body:"payload="+encodeURIComponent(JSON.stringify({entries}))
+  });
+}
+
+/* ================= START ================= */
+loadGroups();
+createGroup(1);
+createGroup(2);
+createGroup(3);
 </script>
 
 </body>
