@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="de">
 <head>
@@ -83,13 +82,15 @@ button{
 <div id="groups"></div>
 
 <div class="card">
-<button onclick="sendMail()">📧 Resultat senden</button>
+<button onclick="sendResult()">📧 Resultat senden</button>
 </div>
 
 </div>
 
 <script>
-/* ===== Gruppen aus gruppen.txt ===== */
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzgsvVrN4hPb97aRVOHOpkAeu3ZlHnCQqQTyMkXbDSLfk4OKj2hhTeUeEKyV6Nd3MmoYg/exec";
+
+/* ===== Gruppen laden ===== */
 async function loadGroups(){
   const r=await fetch("gruppen.txt?ts="+Date.now(),{cache:"no-store"});
   const g=r.ok?(await r.text()).split(/\r?\n/).filter(x=>x.trim()):[];
@@ -147,37 +148,69 @@ function updateTitles(){
   });
 }
 
-/* ===== MAIL ===== */
-function sendMail(){
+/* ===== RESULTAT SENDEN: MAIL + GOOGLE ===== */
+function sendResult(){
   if(!g1.value){
     alert("Mindestens Gruppe 1 auswählen");
     return;
   }
 
-  let body="";
-  body+="AMTSCUP JUNGSCHÜTZEN – RESULTAT\n";
-  body+="================================\n\n";
-  body+="GRUPPENCHEF\n";
-  body+="Name;E-Mail\n";
-  body+=`${chef.value||"-"};${email.value||"-"}\n\n`;
+  let mail="";
+  mail+="AMTSCUP JUNGSCHÜTZEN – RESULTAT\n";
+  mail+="================================\n\n";
+  mail+="GRUPPENCHEF\n";
+  mail+="Name;E-Mail\n";
+  mail+=`${chef.value||"-"};${email.value||"-"}\n\n`;
+
+  const entries=[];
 
   [1,2,3].forEach(n=>{
-    const g=document.getElementById("g"+n).value;
-    if(!g) return;
+    const gruppe=document.getElementById("g"+n).value;
+    if(!gruppe) return;
 
-    body+=`GRUPPE ${n};${g}\n`;
-    body+="Name;Jahrgang;Resultat\n";
+    const sum=document.getElementById("sum"+n).textContent;
+
+    mail+=`GRUPPE ${n};${gruppe}\n`;
+    mail+="Name;Jahrgang;Resultat\n";
+
     document.querySelectorAll(`#group${n} tbody tr`).forEach(tr=>{
-      const v=[...tr.querySelectorAll("input")].map(i=>i.value.trim());
-      if(v.join("")) body+=`${v[0]||"-"};${v[1]||"-"};${v[2]||"0"}\n`;
+      const i=tr.querySelectorAll("input");
+      const name=i[0].value.trim();
+      const jahr=i[1].value.trim();
+      const res=i[2].value.trim();
+
+      if(name||res){
+        mail+=`${name||"-"};${jahr||"-"};${res||"0"}\n`;
+
+        entries.push({
+          chef:chef.value||"",
+          email:email.value||"",
+          gruppe:gruppe,
+          name:name,
+          jahrgang:jahr,
+          resultat:res,
+          summe:sum
+        });
+      }
     });
-    body+=`SUMME;;${document.getElementById("sum"+n).textContent}\n\n`;
+
+    mail+=`SUMME;;${sum}\n\n`;
   });
 
+  /* Mail */
   location.href=
     "mailto:thomannpeter@bluewin.ch"+
     "?subject="+encodeURIComponent("Amtscup Jungschützen – Resultat")+
-    "&body="+encodeURIComponent(body);
+    "&body="+encodeURIComponent(mail);
+
+  /* Google Tabelle */
+  fetch(SCRIPT_URL,{
+    method:"POST",
+    mode:"no-cors",
+    body:JSON.stringify({entries})
+  });
+
+  alert("✅ Resultat per Mail gesendet und in Google Tabelle gespeichert");
 }
 
 /* START */
