@@ -203,10 +203,15 @@ function renderGroups(){
    inp[1].oninput=e=>r.y=e.target.value;
    inp[2].onchange=e=>r.g=e.target.value;
    inp[3].oninput=e=>{
-     let v = +e.target.value || 0;
-     if(v > 150) v = 150;
-     e.target.value = v;
-     r.r = v;
+     const v = +e.target.value;
+     if(v > 150){
+       alert("❌ Ungültiges Resultat!\nMaximal erlaubt sind 150 Punkte.");
+       e.target.value = "";
+       r.r = "";
+       updateSum(c,g);
+       return;
+     }
+     r.r = v || "";
      updateSum(c,g);
    };
    tb.appendChild(tr);
