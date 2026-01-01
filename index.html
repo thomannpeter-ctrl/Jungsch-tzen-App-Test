@@ -195,12 +195,20 @@ function renderGroups(){
       <option value="w" ${r.g==="w"?"selected":""}>w</option>
      </select>
     </td>
-    <td class="res"><input value="${r.r||""}"></td>`;
+    <td class="res">
+      <input type="number" min="0" max="150" value="${r.r||""}">
+    </td>`;
    const inp=tr.querySelectorAll("input,select");
    inp[0].oninput=e=>r.n=e.target.value;
    inp[1].oninput=e=>r.y=e.target.value;
    inp[2].onchange=e=>r.g=e.target.value;
-   inp[3].oninput=e=>{r.r=e.target.value;updateSum(c,g)};
+   inp[3].oninput=e=>{
+     let v = +e.target.value || 0;
+     if(v > 150) v = 150;
+     e.target.value = v;
+     r.r = v;
+     updateSum(c,g);
+   };
    tb.appendChild(tr);
   });
 
