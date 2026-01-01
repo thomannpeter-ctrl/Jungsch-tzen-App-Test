@@ -18,11 +18,14 @@ h1{color:#1e3a8a}
 h2{color:#1d4ed8}
 
 .card{
- background:#fff;
- border-radius:14px;
- padding:1rem;
- margin-bottom:1rem;
+ background:#fff;border-radius:14px;
+ padding:1rem;margin-bottom:1rem;
  box-shadow:0 4px 10px rgba(0,0,0,.08)
+}
+
+input,select{
+ width:100%;padding:.45rem;
+ border-radius:8px;border:1px solid #cbd5f5
 }
 
 table{width:100%;border-collapse:collapse;font-size:.85rem}
@@ -34,11 +37,6 @@ td.year input{width:70px;text-align:center}
 td.gender select{width:70px}
 td.res input{width:60px;text-align:center}
 
-input,select{
- width:100%;padding:.45rem;
- border-radius:8px;border:1px solid #cbd5f5
-}
-
 button{
  border:none;border-radius:999px;
  padding:.9rem;font-size:1rem;
@@ -46,12 +44,12 @@ button{
  width:100%;cursor:pointer
 }
 
+.winner-ok{background:#dcfce7;padding:.7rem;border-radius:12px;font-weight:700}
+.winner-none{background:#e5e7eb;padding:.7rem;border-radius:12px}
+
 .notice{
- background:#fff7ed;
- border:1px solid #fdba74;
- border-radius:12px;
- padding:.9rem;
- font-size:.9rem
+ background:#fff7ed;border:1px solid #fdba74;
+ border-radius:12px;padding:.9rem;font-size:.9rem
 }
 </style>
 </head>
@@ -78,19 +76,27 @@ button{
 
 <div id="groups"></div>
 
+<div class="card">
+<h2>Sieger</h2>
+<div id="winner" class="winner-none">–</div>
+</div>
+
 <div class="card notice">
 📸 <b>Hinweis:</b> Standblatt-Foto bitte separat aufbewahren.
 </div>
 
 <div class="card">
-<button onclick="downloadCSV()">📄 CSV herunterladen</button>
+<button onclick="sendToGoogle()">📤 Resultate übermitteln</button>
 </div>
 
 </div>
 
 <script>
-const state = {};
+const SCRIPT_URL =
+"https://script.google.com/macros/s/AKfycbz8NQDcW9ftUNpfJzSz483lPNso6ecaeY7Mynap78baBeG8ziSeb34lMXvzKgiwBXNw/exec";
+
 const WETTKAMPF = "Jungschützen Amtscup";
+const state = {};
 
 async function loadGroups(){
  const r = await fetch("gruppen.txt?v="+Date.now());
@@ -118,63 +124,102 @@ function render(){
   c.innerHTML=`
   <h2>Gruppe ${gi+1}: ${g.name}</h2>
   <table>
-  <tr><th>#</th><th>Name</th><th>Jahr</th><th>G</th><th>Resultat</th></tr>
+   <tr><th>#</th><th>Name</th><th>Jahrgang</th><th>G</th><th>Resultat</th></tr>
   </table>`;
   const t=c.querySelector("table");
 
   g.rows.forEach((r,i)=>{
    const tr=t.insertRow();
    tr.innerHTML=`
-   <td>${i+1}</td>
-   <td class="name"><input></td>
-   <td class="year"><input></td>
-   <td class="gender">
-    <select><option></option><option>m</option><option>w</option></select>
-   </td>
-   <td class="res"><input type="number" min="0" max="150"></td>`;
+    <td>${i+1}</td>
+    <td class="name"><input></td>
+    <td class="year"><input></td>
+    <td class="gender">
+     <select><option></option><option>m</option><option>w</option></select>
+    </td>
+    <td class="res"><input type="number"></td>`;
    const inp=tr.querySelectorAll("input,select");
    inp[0].oninput=e=>r.n=e.target.value;
    inp[1].oninput=e=>r.y=e.target.value;
    inp[2].onchange=e=>r.g=e.target.value;
    inp[3].oninput=e=>{
-     if(e.target.value>150){
-       alert("Maximal 150 Punkte erlaubt");
-       e.target.value="";
-       return;
-     }
-     r.r=e.target.value;
+    const v=Number(e.target.value);
+    if(v>150){
+     alert("❌ Maximal 150 Punkte erlaubt");
+     e.target.value="";
+     return;
+    }
+    r.r=v;
+    calcWinner();
    };
   });
   groups.appendChild(c);
  });
+ calcWinner();
 }
 
-function downloadCSV(){
+function calcWinner(){
+ const arr=Object.values(state)
+  .map(g=>({n:g.name,t:g.rows.reduce((a,b)=>a+(+b.r||0),0)}))
+  .filter(x=>x.t>0);
+
+ if(arr.length<2){
+  winner.textContent="–";
+  winner.className="winner-none";
+  return;
+ }
+
+ arr.sort((a,b)=>b.t-a.t);
+ winner.className="winner-ok";
+
+ if(arr.length===2){
+  winner.innerHTML=`🏆 Sieger: ${arr[0].n} (${arr[0].t})<br>❌ Verlierer: ${arr[1].n} (${arr[1].t})`;
+ }else{
+  winner.innerHTML=`🏆 Sieger: ${arr[0].n} & ${arr[1].n}<br>❌ Verlierer: ${arr[2].n}`;
+ }
+}
+
+async function sendToGoogle(){
  if(!chef.value||!email.value){
   alert("Name und E-Mail sind Pflichtfelder");
   return;
  }
- if(!Object.keys(state).length){
-  alert("Mindestens eine Gruppe wählen");
-  return;
- }
 
- let csv="Datum;Wettkampf;Gruppe;Nr;Name;Jahrgang;Gender;Resultat;Gruppenchef;Email\n";
+ const rows=[];
  const date=new Date().toISOString().slice(0,10);
 
  Object.values(state).forEach(g=>{
   g.rows.forEach((r,i)=>{
    if(r.n||r.r){
-    csv+=`${date};${WETTKAMPF};${g.name};${i+1};${r.n||""};${r.y||""};${r.g||""};${r.r||""};${chef.value};${email.value}\n`;
+    rows.push({
+     Datum:date,
+     Wettkampf:WETTKAMPF,
+     Gruppe:g.name,
+     Nr:i+1,
+     Name:r.n||"",
+     Jahrgang:r.y||"",
+     Gender:r.g||"",
+     Resultat:r.r||"",
+     Gruppenchef:chef.value,
+     Email:email.value
+    });
    }
   });
  });
 
- const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
- const a=document.createElement("a");
- a.href=URL.createObjectURL(blob);
- a.download="amtscup_resultate.csv";
- a.click();
+ if(!rows.length){
+  alert("Keine Resultate erfasst");
+  return;
+ }
+
+ await fetch(SCRIPT_URL,{
+  method:"POST",
+  body:JSON.stringify(rows),
+  headers:{ "Content-Type":"application/json" }
+ });
+
+ alert("✅ Resultate erfolgreich übermittelt");
+ location.reload();
 }
 
 loadGroups();
