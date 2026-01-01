@@ -92,8 +92,9 @@ button{
 </div>
 
 <script>
+// ✅ NEUE, KORREKTE SCRIPT-URL
 const SCRIPT_URL =
-"https://script.google.com/macros/s/AKfycbz8NQDcW9ftUNpfJzSz483lPNso6ecaeY7Mynap78baBeG8ziSeb34lMXvzKgiwBXNw/exec";
+"https://script.google.com/macros/s/AKfycbxjcqMQZALdUSm-DW6cdmYJi6GWpOtvmj1Yo9nec78b0AivRoMWOJhAvo0TxhiG0NXc/exec";
 
 const WETTKAMPF = "Jungschützen Amtscup";
 const state = {};
@@ -101,6 +102,7 @@ const state = {};
 async function loadGroups(){
  const r = await fetch("gruppen.txt?v="+Date.now());
  const list = (await r.text()).split(/\r?\n/).filter(Boolean);
+
  ["g1","g2","g3"].forEach(id=>{
   const s=document.getElementById(id);
   s.innerHTML="<option value=''>Bitte wählen…</option>";
@@ -122,10 +124,10 @@ function render(){
   const c=document.createElement("div");
   c.className="card";
   c.innerHTML=`
-  <h2>Gruppe ${gi+1}: ${g.name}</h2>
-  <table>
-   <tr><th>#</th><th>Name</th><th>Jahrgang</th><th>G</th><th>Resultat</th></tr>
-  </table>`;
+   <h2>Gruppe ${gi+1}: ${g.name}</h2>
+   <table>
+    <tr><th>#</th><th>Name</th><th>Jahrgang</th><th>G</th><th>Resultat</th></tr>
+   </table>`;
   const t=c.querySelector("table");
 
   g.rows.forEach((r,i)=>{
@@ -142,6 +144,7 @@ function render(){
      </select>
     </td>
     <td class="res"><input type="number" value="${r.r||""}"></td>`;
+
    const inp=tr.querySelectorAll("input,select");
    inp[0].oninput=e=>r.n=e.target.value;
    inp[1].oninput=e=>r.y=e.target.value;
@@ -150,7 +153,7 @@ function render(){
     const v=Number(e.target.value);
     if(v>150){
      alert("❌ Maximal 150 Punkte erlaubt");
-     e.target.value="";
+     e.target.value=r.r||"";
      return;
     }
     r.r=v;
@@ -219,16 +222,15 @@ async function sendToGoogle(){
  try{
   const res = await fetch(SCRIPT_URL,{
    method:"POST",
-   body:JSON.stringify(rows),
-   headers:{ "Content-Type":"application/json" }
+   headers:{ "Content-Type":"application/json" },
+   body:JSON.stringify(rows)
   });
 
-  if(!res.ok){
-   throw new Error("Server-Fehler");
-  }
+  if(!res.ok) throw new Error("HTTP Fehler");
 
   alert("✅ Resultate erfolgreich übermittelt");
   location.reload();
+
  }catch(err){
   alert("❌ Übermittlung fehlgeschlagen");
   console.error(err);
