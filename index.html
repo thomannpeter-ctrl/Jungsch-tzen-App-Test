@@ -54,9 +54,9 @@ th,td{
 
 th{background:#dbeafe}
 
-/* Spaltenbreiten mobilfreundlich */
 td.name input{width:100%}
 td.year input{width:70px;text-align:center}
+td.gender select{width:70px}
 td.res input{width:60px;text-align:center}
 
 button{
@@ -83,7 +83,6 @@ button{
  border-radius:12px
 }
 
-/* Hinweisbox */
 .notice{
  background:#fff7ed;
  border:1px solid #fdba74;
@@ -132,7 +131,7 @@ button{
 <div class="card notice">
 <strong>📸 Wichtig:</strong><br>
 Bitte <b>Foto oder Scan des ausgefüllten Standblattes</b><br>
-<b>manuell dem E-Mail anhängen</b>, bevor es gesendet wird.
+<b>manuell dem E-Mail anhängen</b>.
 </div>
 
 <div class="card">
@@ -145,56 +144,63 @@ Bitte <b>Foto oder Scan des ausgefüllten Standblattes</b><br>
 const RESULT_EMAIL = "thomannpeter@bluewin.ch";
 const state = {};
 
-/* Gruppenliste laden (Cache-Busting) */
 async function loadGroups(){
  const r = await fetch("gruppen.txt?v=" + Date.now());
  const list = (await r.text()).split(/\r?\n/).filter(Boolean);
 
  ["g1","g2","g3"].forEach(id=>{
-  const s = document.getElementById(id);
-  s.innerHTML = "<option value=''>Bitte wählen…</option>";
-  list.forEach(g => s.add(new Option(g,g)));
-  s.onchange = () => selectGroup(id);
+  const s=document.getElementById(id);
+  s.innerHTML="<option value=''>Bitte wählen…</option>";
+  list.forEach(g=>s.add(new Option(g,g)));
+  s.onchange=()=>selectGroup(id);
  });
 }
 
 function selectGroup(id){
- const name = document.getElementById(id).value;
+ const name=document.getElementById(id).value;
  if(!name) return;
- if(!state[id]) state[id] = { name, rows:[{},{},{},{}] };
+ if(!state[id]) state[id]={name,rows:[{},{},{},{}]};
  renderGroups();
 }
 
 function renderGroups(){
  groups.innerHTML="";
  Object.keys(state).forEach((id,i)=>{
-  const g = state[id];
-  const c = document.createElement("div");
+  const g=state[id];
+  const c=document.createElement("div");
   c.className="card";
-  c.innerHTML = `
+  c.innerHTML=`
    <h2>Schützen – Gruppe ${i+1}: ${g.name}</h2>
    <table>
     <thead>
-     <tr><th>#</th><th>Name</th><th>Jahrgang</th><th>Resultat</th></tr>
+     <tr><th>#</th><th>Name</th><th>Jahrgang</th><th>Gender</th><th>Resultat</th></tr>
     </thead>
     <tbody></tbody>
     <tfoot>
-     <tr><th colspan="3">Summe</th><th class="sum">0</th></tr>
+     <tr><th colspan="4">Summe</th><th class="sum">0</th></tr>
     </tfoot>
    </table>`;
-  const tb = c.querySelector("tbody");
+  const tb=c.querySelector("tbody");
 
   g.rows.forEach((r,idx)=>{
-   const tr = document.createElement("tr");
-   tr.innerHTML = `
+   const tr=document.createElement("tr");
+   tr.innerHTML=`
     <td>${idx+1}</td>
     <td class="name"><input value="${r.n||""}"></td>
     <td class="year"><input value="${r.y||""}"></td>
+    <td class="gender">
+     <select>
+      <option value=""></option>
+      <option value="m" ${r.g==="m"?"selected":""}>m</option>
+      <option value="w" ${r.g==="w"?"selected":""}>w</option>
+     </select>
+    </td>
     <td class="res"><input value="${r.r||""}"></td>`;
-   const i = tr.querySelectorAll("input");
-   i[0].oninput = e => r.n = e.target.value;
-   i[1].oninput = e => r.y = e.target.value;
-   i[2].oninput = e => { r.r = e.target.value; updateSum(c,g); };
+   const inp=tr.querySelectorAll("input,select");
+   inp[0].oninput=e=>r.n=e.target.value;
+   inp[1].oninput=e=>r.y=e.target.value;
+   inp[2].onchange=e=>r.g=e.target.value;
+   inp[3].oninput=e=>{r.r=e.target.value;updateSum(c,g)};
    tb.appendChild(tr);
   });
 
@@ -205,38 +211,34 @@ function renderGroups(){
 }
 
 function updateSum(card,g){
- card.querySelector(".sum").textContent =
+ card.querySelector(".sum").textContent=
   g.rows.reduce((a,b)=>a+(+b.r||0),0);
  calcWinner();
 }
 
 function calcWinner(){
- const arr = Object.values(state)
-  .map(g=>({ n:g.name, t:g.rows.reduce((a,b)=>a+(+b.r||0),0) }))
+ const arr=Object.values(state)
+  .map(g=>({n:g.name,t:g.rows.reduce((a,b)=>a+(+b.r||0),0)}))
   .filter(x=>x.t>0);
 
- if(arr.length < 2){
-  winner.textContent = "–";
-  winner.className = "winner-none";
+ if(arr.length<2){
+  winner.textContent="–";
+  winner.className="winner-none";
   return;
  }
 
  arr.sort((a,b)=>b.t-a.t);
- winner.className = "winner-ok";
+ winner.className="winner-ok";
 
- if(arr.length === 2){
-  winner.innerHTML =
-   `🏆 Sieger: ${arr[0].n} (${arr[0].t})<br>`+
-   `❌ Verlierer: ${arr[1].n} (${arr[1].t})`;
+ if(arr.length===2){
+  winner.innerHTML=`🏆 Sieger: ${arr[0].n} (${arr[0].t})<br>❌ Verlierer: ${arr[1].n} (${arr[1].t})`;
  } else {
-  winner.innerHTML =
-   `🏆 Sieger: ${arr[0].n} & ${arr[1].n}<br>`+
-   `❌ Verlierer: ${arr[2].n}`;
+  winner.innerHTML=`🏆 Sieger: ${arr[0].n} & ${arr[1].n}<br>❌ Verlierer: ${arr[2].n}`;
  }
 }
 
 function sendResult(){
- if(!chef.value || !email.value){
+ if(!chef.value||!email.value){
   alert("Name und E-Mail sind Pflichtfelder.");
   return;
  }
@@ -245,32 +247,27 @@ function sendResult(){
   return;
  }
 
- let body = "";
- body += "JUNGSCHUETZEN AMTSCUP – RESULTAT\n\n";
- body += "Gruppenchef: " + chef.value + "\n";
- body += "E-Mail: " + email.value + "\n\n";
+ let body="JUNGSCHUETZEN AMTSCUP – RESULTAT\n\n";
+ body+="Gruppenchef;"+chef.value+"\n";
+ body+="Email;"+email.value+"\n\n";
 
  Object.values(state).forEach((g,idx)=>{
-  body += "GRUPPE " + (idx+1) + ": " + g.name + "\n";
-  body += "Nr; Name; Jahrgang; Resultat\n";
+  body+="GRUPPE "+(idx+1)+";"+g.name+"\n";
+  body+="Nr;Name;Jahrgang;Gender;Resultat\n";
   g.rows.forEach((r,i)=>{
-   if(r.n || r.r){
-    body += (i+1)+"; "+(r.n||"")+"; "+(r.y||"")+"; "+(r.r||"0")+"\n";
+   if(r.n||r.r){
+    body+=(i+1)+";"+(r.n||"")+";"+(r.y||"")+";"+(r.g||"")+";"+(r.r||"0")+"\n";
    }
   });
-  body += "Summe Gruppe " + (idx+1) + ": " +
-          g.rows.reduce((a,b)=>a+(+b.r||0),0) + "\n\n";
+  body+="\n";
  });
 
- body += "HINWEIS: Bitte Standblatt-Foto / Scan dem E-Mail anhängen.\n";
-
- const mailto =
-  "mailto:" + RESULT_EMAIL +
-  "?subject=" + encodeURIComponent("Jungschuetzen Amtscup Resultat") +
-  "&body=" + encodeURIComponent(body);
-
- /* 🔑 PWA-sicher */
- window.open(mailto, "_self");
+ window.open(
+  "mailto:"+RESULT_EMAIL+
+  "?subject="+encodeURIComponent("Jungschuetzen Amtscup Resultat")+
+  "&body="+encodeURIComponent(body),
+  "_self"
+ );
 }
 
 loadGroups();
