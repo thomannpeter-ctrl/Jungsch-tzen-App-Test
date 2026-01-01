@@ -92,12 +92,18 @@ button{
 </div>
 
 <script>
-// ✅ NEUE, KORREKTE SCRIPT-URL
-const SCRIPT_URL ="https://script.google.com/macros/s/AKfycbxwc7n0w80Ydzr-GA24H1lr9G0u6sE6yLW5-KfLesXOF8DrwHsCooXCknAXBf42y0iF/exec";
+/* 🔴 HIER MUSS DEINE AKTUELLE SCRIPT-URL STEHEN */
+const SCRIPT_URL =
+"https://script.google.com/macros/s/AKfycbxjcqMQZALdUSm-DW6cdmYJi6GWpOtvmj1Yo9nec78b0AivRoMWOJhAvo0TxhiG0NXc/exec";
 
 const WETTKAMPF = "Jungschützen Amtscup";
-const state = {};
 
+/* 🔒 Zustand – bleibt stabil */
+const state = {
+ g1:null, g2:null, g3:null
+};
+
+/* Gruppen laden */
 async function loadGroups(){
  const r = await fetch("gruppen.txt?v="+Date.now());
  const list = (await r.text()).split(/\r?\n/).filter(Boolean);
@@ -110,16 +116,23 @@ async function loadGroups(){
  });
 }
 
+/* Gruppe auswählen */
 function selectGroup(id){
  const name=document.getElementById(id).value;
  if(!name) return;
- if(!state[id]) state[id]={name,rows:[{},{},{},{}]};
+
+ if(!state[id]){
+  state[id]={name,rows:[{},{},{},{}]};
+ }else{
+  state[id].name=name;
+ }
  render();
 }
 
+/* Darstellung */
 function render(){
  groups.innerHTML="";
- Object.values(state).forEach((g,gi)=>{
+ Object.values(state).filter(Boolean).forEach((g,gi)=>{
   const c=document.createElement("div");
   c.className="card";
   c.innerHTML=`
@@ -143,7 +156,6 @@ function render(){
      </select>
     </td>
     <td class="res"><input type="number" value="${r.r||""}"></td>`;
-
    const inp=tr.querySelectorAll("input,select");
    inp[0].oninput=e=>r.n=e.target.value;
    inp[1].oninput=e=>r.y=e.target.value;
@@ -164,8 +176,10 @@ function render(){
  calcWinner();
 }
 
+/* Sieger berechnen */
 function calcWinner(){
  const arr=Object.values(state)
+  .filter(Boolean)
   .map(g=>({n:g.name,t:g.rows.reduce((a,b)=>a+(+b.r||0),0)}))
   .filter(x=>x.t>0);
 
@@ -185,6 +199,7 @@ function calcWinner(){
  }
 }
 
+/* 🔑 GOOGLE-ÜBERMITTLUNG – STABIL */
 async function sendToGoogle(){
  if(!chef.value||!email.value){
   alert("Name und E-Mail sind Pflichtfelder");
@@ -194,7 +209,7 @@ async function sendToGoogle(){
  const rows=[];
  const date=new Date().toISOString().slice(0,10);
 
- Object.values(state).forEach(g=>{
+ Object.values(state).filter(Boolean).forEach(g=>{
   g.rows.forEach((r,i)=>{
    if(r.n||r.r){
     rows.push({
@@ -219,20 +234,18 @@ async function sendToGoogle(){
  }
 
  try{
-  const res = await fetch(SCRIPT_URL,{
+  await fetch(SCRIPT_URL,{
    method:"POST",
-   headers:{ "Content-Type":"application/json" },
-   body:JSON.stringify(rows)
+   body:JSON.stringify(rows),
+   mode:"no-cors"   // 🔑 ENTSCHEIDEND
   });
 
-  if(!res.ok) throw new Error("HTTP Fehler");
-
-  alert("✅ Resultate erfolgreich übermittelt");
+  alert("✅ Resultate wurden übermittelt");
   location.reload();
 
  }catch(err){
-  alert("❌ Übermittlung fehlgeschlagen");
   console.error(err);
+  alert("❌ Übermittlung fehlgeschlagen");
  }
 }
 
