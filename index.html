@@ -132,12 +132,16 @@ function render(){
    const tr=t.insertRow();
    tr.innerHTML=`
     <td>${i+1}</td>
-    <td class="name"><input></td>
-    <td class="year"><input></td>
+    <td class="name"><input value="${r.n||""}"></td>
+    <td class="year"><input value="${r.y||""}"></td>
     <td class="gender">
-     <select><option></option><option>m</option><option>w</option></select>
+     <select>
+      <option value=""></option>
+      <option value="m" ${r.g==="m"?"selected":""}>m</option>
+      <option value="w" ${r.g==="w"?"selected":""}>w</option>
+     </select>
     </td>
-    <td class="res"><input type="number"></td>`;
+    <td class="res"><input type="number" value="${r.r||""}"></td>`;
    const inp=tr.querySelectorAll("input,select");
    inp[0].oninput=e=>r.n=e.target.value;
    inp[1].oninput=e=>r.y=e.target.value;
@@ -212,14 +216,23 @@ async function sendToGoogle(){
   return;
  }
 
- await fetch(SCRIPT_URL,{
-  method:"POST",
-  body:JSON.stringify(rows),
-  headers:{ "Content-Type":"application/json" }
- });
+ try{
+  const res = await fetch(SCRIPT_URL,{
+   method:"POST",
+   body:JSON.stringify(rows),
+   headers:{ "Content-Type":"application/json" }
+  });
 
- alert("✅ Resultate erfolgreich übermittelt");
- location.reload();
+  if(!res.ok){
+   throw new Error("Server-Fehler");
+  }
+
+  alert("✅ Resultate erfolgreich übermittelt");
+  location.reload();
+ }catch(err){
+  alert("❌ Übermittlung fehlgeschlagen");
+  console.error(err);
+ }
 }
 
 loadGroups();
