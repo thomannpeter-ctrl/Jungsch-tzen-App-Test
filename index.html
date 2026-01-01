@@ -5,10 +5,8 @@
 <title>Jungschützen Amtscup</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- PWA -->
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1">
-<link rel="icon" href="apple-touch-icon.png?v=1">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1e3a8a">
 
@@ -16,7 +14,6 @@
 *{box-sizing:border-box}
 body{font-family:system-ui,sans-serif;background:#eef2f7;margin:0}
 .container{max-width:1200px;margin:auto;padding:1rem}
-
 h1{color:#1e3a8a}
 h2{color:#1d4ed8}
 
@@ -28,30 +25,8 @@ h2{color:#1d4ed8}
  box-shadow:0 4px 10px rgba(0,0,0,.08)
 }
 
-.row{display:flex;gap:.75rem;flex-wrap:wrap}
-.field{flex:1;min-width:220px}
-label{font-size:.8rem;font-weight:600}
-
-input,select{
- width:100%;
- padding:.45rem;
- border-radius:8px;
- border:1px solid #cbd5f5;
- font-size:14px
-}
-
-table{
- width:100%;
- border-collapse:collapse;
- font-size:.85rem
-}
-
-th,td{
- border:1px solid #e5e7eb;
- padding:.35rem;
- text-align:center
-}
-
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th,td{border:1px solid #e5e7eb;padding:.35rem;text-align:center}
 th{background:#dbeafe}
 
 td.name input{width:100%}
@@ -59,28 +34,16 @@ td.year input{width:70px;text-align:center}
 td.gender select{width:70px}
 td.res input{width:60px;text-align:center}
 
+input,select{
+ width:100%;padding:.45rem;
+ border-radius:8px;border:1px solid #cbd5f5
+}
+
 button{
- border:none;
- border-radius:999px;
- padding:.9rem;
- font-size:1rem;
- cursor:pointer;
- background:#2563eb;
- color:white;
- width:100%
-}
-
-.winner-ok{
- background:#dcfce7;
- padding:.7rem;
- border-radius:12px;
- font-weight:700
-}
-
-.winner-none{
- background:#e5e7eb;
- padding:.7rem;
- border-radius:12px
+ border:none;border-radius:999px;
+ padding:.9rem;font-size:1rem;
+ background:#2563eb;color:white;
+ width:100%;cursor:pointer
 }
 
 .notice{
@@ -100,54 +63,38 @@ button{
 
 <div class="card">
 <h2>1. Gruppenchef</h2>
-<div class="row">
- <div class="field">
-  <label>Name *</label>
-  <input id="chef">
- </div>
- <div class="field">
-  <label>E-Mail *</label>
-  <input id="email" type="email">
- </div>
-</div>
+<label>Name *</label>
+<input id="chef">
+<label>E-Mail *</label>
+<input id="email" type="email">
 </div>
 
 <div class="card">
 <h2>2. Gruppenauswahl</h2>
-<div class="row">
- <div class="field"><label>Gruppe 1 *</label><select id="g1"></select></div>
- <div class="field"><label>Gruppe 2</label><select id="g2"></select></div>
- <div class="field"><label>Gruppe 3</label><select id="g3"></select></div>
-</div>
+<select id="g1"></select>
+<select id="g2"></select>
+<select id="g3"></select>
 </div>
 
 <div id="groups"></div>
 
-<div class="card">
-<h2>Sieger</h2>
-<div id="winner" class="winner-none">–</div>
-</div>
-
 <div class="card notice">
-<strong>📸 Wichtig:</strong><br>
-Bitte <b>Foto oder Scan des ausgefüllten Standblattes</b><br>
-<b>manuell dem E-Mail anhängen</b>.
+📸 <b>Hinweis:</b> Standblatt-Foto bitte separat aufbewahren.
 </div>
 
 <div class="card">
-<button onclick="sendResult()">📧 Resultat per Mail senden</button>
+<button onclick="downloadCSV()">📄 CSV herunterladen</button>
 </div>
 
 </div>
 
 <script>
-const RESULT_EMAIL = "thomannpeter@bluewin.ch";
 const state = {};
+const WETTKAMPF = "Jungschützen Amtscup";
 
 async function loadGroups(){
- const r = await fetch("gruppen.txt?v=" + Date.now());
+ const r = await fetch("gruppen.txt?v="+Date.now());
  const list = (await r.text()).split(/\r?\n/).filter(Boolean);
-
  ["g1","g2","g3"].forEach(id=>{
   const s=document.getElementById(id);
   s.innerHTML="<option value=''>Bitte wählen…</option>";
@@ -160,127 +107,74 @@ function selectGroup(id){
  const name=document.getElementById(id).value;
  if(!name) return;
  if(!state[id]) state[id]={name,rows:[{},{},{},{}]};
- renderGroups();
+ render();
 }
 
-function renderGroups(){
+function render(){
  groups.innerHTML="";
- Object.keys(state).forEach((id,i)=>{
-  const g=state[id];
+ Object.values(state).forEach((g,gi)=>{
   const c=document.createElement("div");
   c.className="card";
   c.innerHTML=`
-   <h2>Schützen – Gruppe ${i+1}: ${g.name}</h2>
-   <table>
-    <thead>
-     <tr><th>#</th><th>Name</th><th>Jahrgang</th><th>Gender</th><th>Resultat</th></tr>
-    </thead>
-    <tbody></tbody>
-    <tfoot>
-     <tr><th colspan="4">Summe</th><th class="sum">0</th></tr>
-    </tfoot>
-   </table>`;
-  const tb=c.querySelector("tbody");
+  <h2>Gruppe ${gi+1}: ${g.name}</h2>
+  <table>
+  <tr><th>#</th><th>Name</th><th>Jahr</th><th>G</th><th>Resultat</th></tr>
+  </table>`;
+  const t=c.querySelector("table");
 
-  g.rows.forEach((r,idx)=>{
-   const tr=document.createElement("tr");
+  g.rows.forEach((r,i)=>{
+   const tr=t.insertRow();
    tr.innerHTML=`
-    <td>${idx+1}</td>
-    <td class="name"><input value="${r.n||""}"></td>
-    <td class="year"><input value="${r.y||""}"></td>
-    <td class="gender">
-     <select>
-      <option value=""></option>
-      <option value="m" ${r.g==="m"?"selected":""}>m</option>
-      <option value="w" ${r.g==="w"?"selected":""}>w</option>
-     </select>
-    </td>
-    <td class="res">
-      <input type="number" min="0" max="150" value="${r.r||""}">
-    </td>`;
+   <td>${i+1}</td>
+   <td class="name"><input></td>
+   <td class="year"><input></td>
+   <td class="gender">
+    <select><option></option><option>m</option><option>w</option></select>
+   </td>
+   <td class="res"><input type="number" min="0" max="150"></td>`;
    const inp=tr.querySelectorAll("input,select");
    inp[0].oninput=e=>r.n=e.target.value;
    inp[1].oninput=e=>r.y=e.target.value;
    inp[2].onchange=e=>r.g=e.target.value;
    inp[3].oninput=e=>{
-     const v = +e.target.value;
-     if(v > 150){
-       alert("❌ Ungültiges Resultat!\nMaximal erlaubt sind 150 Punkte.");
-       e.target.value = "";
-       r.r = "";
-       updateSum(c,g);
+     if(e.target.value>150){
+       alert("Maximal 150 Punkte erlaubt");
+       e.target.value="";
        return;
      }
-     r.r = v || "";
-     updateSum(c,g);
+     r.r=e.target.value;
    };
-   tb.appendChild(tr);
   });
-
   groups.appendChild(c);
-  updateSum(c,g);
  });
- calcWinner();
 }
 
-function updateSum(card,g){
- card.querySelector(".sum").textContent=
-  g.rows.reduce((a,b)=>a+(+b.r||0),0);
- calcWinner();
-}
-
-function calcWinner(){
- const arr=Object.values(state)
-  .map(g=>({n:g.name,t:g.rows.reduce((a,b)=>a+(+b.r||0),0)}))
-  .filter(x=>x.t>0);
-
- if(arr.length<2){
-  winner.textContent="–";
-  winner.className="winner-none";
-  return;
- }
-
- arr.sort((a,b)=>b.t-a.t);
- winner.className="winner-ok";
-
- if(arr.length===2){
-  winner.innerHTML=`🏆 Sieger: ${arr[0].n} (${arr[0].t})<br>❌ Verlierer: ${arr[1].n} (${arr[1].t})`;
- } else {
-  winner.innerHTML=`🏆 Sieger: ${arr[0].n} & ${arr[1].n}<br>❌ Verlierer: ${arr[2].n}`;
- }
-}
-
-function sendResult(){
+function downloadCSV(){
  if(!chef.value||!email.value){
-  alert("Name und E-Mail sind Pflichtfelder.");
+  alert("Name und E-Mail sind Pflichtfelder");
   return;
  }
  if(!Object.keys(state).length){
-  alert("Mindestens eine Gruppe wählen.");
+  alert("Mindestens eine Gruppe wählen");
   return;
  }
 
- let body="JUNGSCHUETZEN AMTSCUP – RESULTAT\n\n";
- body+="Gruppenchef;"+chef.value+"\n";
- body+="Email;"+email.value+"\n\n";
+ let csv="Datum;Wettkampf;Gruppe;Nr;Name;Jahrgang;Gender;Resultat;Gruppenchef;Email\n";
+ const date=new Date().toISOString().slice(0,10);
 
- Object.values(state).forEach((g,idx)=>{
-  body+="GRUPPE "+(idx+1)+";"+g.name+"\n";
-  body+="Nr;Name;Jahrgang;Gender;Resultat\n";
+ Object.values(state).forEach(g=>{
   g.rows.forEach((r,i)=>{
    if(r.n||r.r){
-    body+=(i+1)+";"+(r.n||"")+";"+(r.y||"")+";"+(r.g||"")+";"+(r.r||"0")+"\n";
+    csv+=`${date};${WETTKAMPF};${g.name};${i+1};${r.n||""};${r.y||""};${r.g||""};${r.r||""};${chef.value};${email.value}\n`;
    }
   });
-  body+="\n";
  });
 
- window.open(
-  "mailto:"+RESULT_EMAIL+
-  "?subject="+encodeURIComponent("Jungschuetzen Amtscup Resultat")+
-  "&body="+encodeURIComponent(body),
-  "_self"
- );
+ const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+ const a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);
+ a.download="amtscup_resultate.csv";
+ a.click();
 }
 
 loadGroups();
